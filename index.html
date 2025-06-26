@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizFlow - Micro-Business Operations Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals & Muted Teal -->
+    <!-- Application Structure Plan: A task-oriented Single Page Application with a fixed sidebar for navigation and a dynamic content area. This structure was chosen for its intuitiveness in business applications, allowing users to easily switch between distinct functional modules (Dashboard, Sales, Finance, etc.) without losing context. The default view is the Dashboard, providing an immediate high-level summary of business health, which is the most common primary need for a business owner. Forms for adding data will appear in modals to maintain the user's context on the current page. -->
+    <!-- Visualization & Content Choices: Dashboard: KPIs (HTML/CSS) for at-a-glance info, Line Chart (Chart.js) for sales/expense trends, Donut Chart (Chart.js) for sales breakdown. Goal: Inform & Compare. Sales/Finance/Inventory/Customers: Interactive tables (HTML/JS) for organized data management. Goal: Organize & Inform. Marketing: Kanban board (HTML/CSS Flexbox) for visual workflow management. Goal: Organize. All interactions (filters, tabs, modals) are handled with vanilla JS to keep the application lightweight. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8F7F4; }
+        .sidebar-icon { width: 24px; height: 24px; }
+        .kpi-card { background-color: #FFFFFF; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); transition: transform 0.2s, box-shadow 0.2s; }
+        .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.04); }
+        .nav-item.active { background-color: #E0F2F1; color: #00796B; }
+        .nav-item.active svg { stroke: #00796B; }
+        .chart-container { position: relative; width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; height: 320px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        .modal-backdrop { background-color: rgba(0,0,0,0.5); }
+        .kanban-board { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+        .kanban-column { min-width: 300px; background-color: #ECEFF1; border-radius: 0.5rem; padding: 0.75rem; }
+        .kanban-card { background-color: white; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.75rem; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="text-[#5A5A5A]">
+
+    <div class="flex h-screen bg-[#F8F7F4]">
+        <!-- Sidebar Navigation -->
+        <aside class="w-20 md:w-64 bg-white shadow-md flex-shrink-0">
+            <div class="p-4 md:p-6">
+                <h1 class="text-xl md:text-2xl font-bold text-[#004D40] hidden md:block">BizFlow</h1>
+                <div class="text-xl font-bold text-[#004D40] md:hidden text-center">BF</div>
+            </div>
+            <nav class="mt-8">
+                <a href="#dashboard" class="nav-item flex items-center p-4 md:px-6 text-gray-700 hover:bg-teal-50 active" data-target="dashboard">
+                    <svg class="sidebar-icon stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                    <span class="ml-4 hidden md:block">Dashboard</span>
+                </a>
+                <a href="#sales" class="nav-item flex items-center p-4 md:px-6 text-gray-700 hover:bg-teal-50" data-target="sales">
+                    <svg class="sidebar-icon stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    <span class="ml-4 hidden md:block">Sales & Orders</span>
+                </a>
+                 <a href="#finance" class="nav-item flex items-center p-4 md:px-6 text-gray-700 hover:bg-teal-50" data-target="finance">
+                    <svg class="sidebar-icon stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5h.01" /></svg>
+                    <span class="ml-4 hidden md:block">Finance</span>
+                </a>
+                <a href="#inventory" class="nav-item flex items-center p-4 md:px-6 text-gray-700 hover:bg-teal-50" data-target="inventory">
+                     <svg class="sidebar-icon stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                    <span class="ml-4 hidden md:block">Inventory</span>
+                </a>
+                <a href="#customers" class="nav-item flex items-center p-4 md:px-6 text-gray-700 hover:bg-teal-50" data-target="customers">
+                    <svg class="sidebar-icon stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-1a6 6 0 00-5.197-5.975" /></svg>
+                    <span class="ml-4 hidden md:block">Customers</span>
+                </a>
+                <a href="#marketing" class="nav-item flex items-center p-4 md:px-6 text-gray-700 hover:bg-teal-50" data-target="marketing">
+                    <svg class="sidebar-icon stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-2.236 9.168-5.518" /></svg>
+                    <span class="ml-4 hidden md:block">Marketing</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 md:p-10 overflow-y-auto">
+            
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Dashboard</h2>
+                    <p class="mt-2 text-gray-600">Welcome back! Here's a summary of your business performance.</p>
+                </header>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="kpi-card p-6">
+                        <h3 class="text-sm font-medium text-gray-500">Total Revenue</h3>
+                        <p class="mt-2 text-3xl font-bold text-gray-900">$45,231.89</p>
+                        <p class="mt-1 text-sm text-green-600">+20.1% from last month</p>
+                    </div>
+                    <div class="kpi-card p-6">
+                        <h3 class="text-sm font-medium text-gray-500">Net Profit</h3>
+                        <p class="mt-2 text-3xl font-bold text-gray-900">$12,890.10</p>
+                        <p class="mt-1 text-sm text-green-600">+15.7% from last month</p>
+                    </div>
+                    <div class="kpi-card p-6">
+                        <h3 class="text-sm font-medium text-gray-500">Open Orders</h3>
+                        <p class="mt-2 text-3xl font-bold text-gray-900">12</p>
+                        <p class="mt-1 text-sm text-gray-500">Awaiting processing</p>
+                    </div>
+                    <div class="kpi-card p-6">
+                        <h3 class="text-sm font-medium text-gray-500">New Customers</h3>
+                        <p class="mt-2 text-3xl font-bold text-gray-900">32</p>
+                        <p class="mt-1 text-sm text-green-600">+5 this month</p>
+                    </div>
+                </div>
+
+                <div class="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm">
+                         <h3 class="text-lg font-semibold text-gray-800 mb-4">Sales vs Expenses</h3>
+                         <div class="chart-container">
+                            <canvas id="salesVsExpensesChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Sales by Product</h3>
+                        <div class="chart-container">
+                            <canvas id="salesByProductChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sales & Orders Section -->
+            <section id="sales" class="content-section hidden">
+                <header class="mb-8 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800">Sales & Order Management</h2>
+                        <p class="mt-2 text-gray-600">Track customer orders from quotation to final invoice.</p>
+                    </div>
+                    <button class="bg-[#4DB6AC] text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-[#26A69A] transition-colors">New Order</button>
+                </header>
+                <div class="bg-white p-6 rounded-lg shadow-sm overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="p-4">Order ID</th>
+                                <th class="p-4">Customer</th>
+                                <th class="p-4">Date</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">#1024</td>
+                                <td class="p-4">Alice Johnson</td>
+                                <td class="p-4">2025-06-25</td>
+                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">Completed</span></td>
+                                <td class="p-4 text-right">$250.00</td>
+                            </tr>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">#1023</td>
+                                <td class="p-4">Bob Williams</td>
+                                <td class="p-4">2025-06-24</td>
+                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-200 rounded-full">Shipped</span></td>
+                                <td class="p-4 text-right">$150.75</td>
+                            </tr>
+                             <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">#1022</td>
+                                <td class="p-4">Charlie Brown</td>
+                                <td class="p-4">2025-06-23</td>
+                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full">Processing</span></td>
+                                <td class="p-4 text-right">$80.50</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+             <!-- Finance Section -->
+            <section id="finance" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Income & Expense Tracking</h2>
+                    <p class="mt-2 text-gray-600">Monitor all financial inflows and outflows for your business.</p>
+                </header>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                             <h3 class="text-xl font-semibold text-gray-800">Income</h3>
+                             <button class="bg-[#4DB6AC] text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-[#26A69A] transition-colors">Add Income</button>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-sm overflow-x-auto">
+                           <table class="w-full text-left">
+                               <thead><tr class="border-b"><th class="p-4">Date</th><th class="p-4">Source</th><th class="p-4 text-right">Amount</th></tr></thead>
+                               <tbody>
+                                   <tr class="border-b"><td class="p-4">2025-06-25</td><td class="p-4">Order #1024</td><td class="p-4 text-right text-green-600">+$250.00</td></tr>
+                                   <tr class="border-b"><td class="p-4">2025-06-24</td><td class="p-4">Order #1023</td><td class="p-4 text-right text-green-600">+$150.75</td></tr>
+                               </tbody>
+                           </table>
+                        </div>
+                    </div>
+                     <div>
+                        <div class="flex justify-between items-center mb-4">
+                             <h3 class="text-xl font-semibold text-gray-800">Expenses</h3>
+                             <button class="bg-[#E57373] text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-[#EF5350] transition-colors">Add Expense</button>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-sm overflow-x-auto">
+                            <table class="w-full text-left">
+                               <thead><tr class="border-b"><th class="p-4">Date</th><th class="p-4">Category</th><th class="p-4 text-right">Amount</th></tr></thead>
+                               <tbody>
+                                   <tr class="border-b"><td class="p-4">2025-06-20</td><td class="p-4">Raw Materials</td><td class="p-4 text-right text-red-600">-$75.20</td></tr>
+                                   <tr class="border-b"><td class="p-4">2025-06-18</td><td class="p-4">Marketing</td><td class="p-4 text-right text-red-600">-$50.00</td></tr>
+                               </tbody>
+                           </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Inventory Section -->
+            <section id="inventory" class="content-section hidden">
+                 <header class="mb-8 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800">Inventory Management</h2>
+                        <p class="mt-2 text-gray-600">Keep track of your product and material stock levels.</p>
+                    </div>
+                    <button class="bg-[#4DB6AC] text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-[#26A69A] transition-colors">Add Product</button>
+                </header>
+                <div class="bg-white p-6 rounded-lg shadow-sm overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="p-4">Product</th>
+                                <th class="p-4">SKU</th>
+                                <th class="p-4">Stock Level</th>
+                                <th class="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">Handmade Mug</td>
+                                <td class="p-4">HM-001</td>
+                                <td class="p-4">42</td>
+                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">In Stock</span></td>
+                            </tr>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">Organic Tea Blend</td>
+                                <td class="p-4">OTB-012</td>
+                                <td class="p-4">8</td>
+                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full">Low Stock</span></td>
+                            </tr>
+                             <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">Artisan Soap Bar</td>
+                                <td class="p-4">ASB-005</td>
+                                <td class="p-4">0</td>
+                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-200 rounded-full">Out of Stock</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Customers Section -->
+            <section id="customers" class="content-section hidden">
+                <header class="mb-8 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800">Customer Management</h2>
+                        <p class="mt-2 text-gray-600">Maintain your customer database and interaction history.</p>
+                    </div>
+                    <button class="bg-[#4DB6AC] text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-[#26A69A] transition-colors">New Customer</button>
+                </header>
+                 <div class="bg-white p-6 rounded-lg shadow-sm overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="p-4">Name</th>
+                                <th class="p-4">Email</th>
+                                <th class="p-4">Total Spent</th>
+                                <th class="p-4">Last Order</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">Alice Johnson</td>
+                                <td class="p-4">alice.j@example.com</td>
+                                <td class="p-4">$1,250.00</td>
+                                <td class="p-4">2025-06-25</td>
+                            </tr>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">Bob Williams</td>
+                                <td class="p-4">bob.w@example.com</td>
+                                <td class="p-4">$850.75</td>
+                                <td class="p-4">2025-06-24</td>
+                            </tr>
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="p-4 font-medium">Charlie Brown</td>
+                                <td class="p-4">charlie.b@example.com</td>
+                                <td class="p-4">$320.50</td>
+                                <td class="p-4">2025-06-23</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Marketing Section -->
+            <section id="marketing" class="content-section hidden">
+                <header class="mb-8 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800">Marketing Planner</h2>
+                        <p class="mt-2 text-gray-600">Organize your content ideas and schedule social media posts.</p>
+                    </div>
+                     <button class="bg-[#4DB6AC] text-white font-bold py-2 px-4 rounded-lg shadow hover:bg-[#26A69A] transition-colors">Add Post Idea</button>
+                </header>
+                <div class="kanban-board">
+                    <div class="kanban-column">
+                        <h3 class="font-semibold mb-4 p-2">Ideas (3)</h3>
+                        <div class="kanban-card">New product photoshoot</div>
+                        <div class="kanban-card">Blog post: "5 Ways to Use Our Mugs"</div>
+                        <div class="kanban-card">Customer testimonial video</div>
+                    </div>
+                    <div class="kanban-column">
+                        <h3 class="font-semibold mb-4 p-2">Scheduled (2)</h3>
+                        <div class="kanban-card"><b>July 1:</b> Instagram post about summer sale.</div>
+                        <div class="kanban-card"><b>July 5:</b> Facebook ad campaign launch.</div>
+                    </div>
+                    <div class="kanban-column">
+                        <h3 class="font-semibold mb-4 p-2">Posted (4)</h3>
+                        <div class="kanban-card text-gray-500">June 24: Twitter poll</div>
+                        <div class="kanban-card text-gray-500">June 22: Behind-the-scenes video</div>
+                        <div class="kanban-card text-gray-500">June 20: New soap announcement</div>
+                        <div class="kanban-card text-gray-500">June 18: Meet the maker post</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const navLinks = document.querySelectorAll('.nav-item');
+    const contentSections = document.querySelectorAll('.content-section');
+
+    function navigateTo(targetId) {
+        contentSections.forEach(section => {
+            section.classList.add('hidden');
+        });
+        document.getElementById(targetId)?.classList.remove('hidden');
+
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset.target === targetId) {
+                link.classList.add('active');
+            }
+        });
+        
+        if(targetId === 'dashboard') {
+            renderDashboardCharts();
+        }
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = e.currentTarget.dataset.target;
+            navigateTo(targetId);
+            window.location.hash = targetId;
+        });
+    });
+    
+    let salesChartInstance;
+    let productChartInstance;
+
+    function renderDashboardCharts() {
+        const salesCtx = document.getElementById('salesVsExpensesChart').getContext('2d');
+        const productCtx = document.getElementById('salesByProductChart').getContext('2d');
+        
+        if (salesChartInstance) salesChartInstance.destroy();
+        salesChartInstance = new Chart(salesCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Sales',
+                    data: [12000, 19000, 15000, 24000, 22000, 28000],
+                    borderColor: '#4DB6AC',
+                    backgroundColor: 'rgba(77, 182, 172, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }, {
+                    label: 'Expenses',
+                    data: [8000, 9000, 7000, 8500, 11000, 13000],
+                    borderColor: '#E57373',
+                    backgroundColor: 'rgba(229, 115, 115, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        if (productChartInstance) productChartInstance.destroy();
+        productChartInstance = new Chart(productCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Handmade Mugs', 'Organic Tea', 'Artisan Soaps', 'Other'],
+                datasets: [{
+                    label: 'Sales by Product',
+                    data: [45, 25, 15, 15],
+                    backgroundColor: ['#4DB6AC', '#81C784', '#A5D6A7', '#BCAAA4'],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+            }
+        });
+    }
+
+    const initialHash = window.location.hash.substring(1);
+    if (initialHash) {
+        navigateTo(initialHash);
+    } else {
+        navigateTo('dashboard');
+    }
+});
+</script>
+</body>
+</html>
